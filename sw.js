@@ -1,7 +1,7 @@
 /* Service worker: permite abrir la app sin internet.
    Estrategia: responde desde la caché al instante y actualiza en segundo plano.
    Las llamadas a /api/ (envío automático) nunca se guardan en caché. */
-const CACHE = "consulta-telemedicina-v3";
+const CACHE = "consulta-telemedicina-v4";
 const ARCHIVOS = [
   "./",
   "./index.html",
