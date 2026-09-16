@@ -2105,7 +2105,6 @@ function construirResumen(datos) {
       if (m.indicaciones) L.push(`   _${m.indicaciones.replace(/\n+/g, " ")}_`);
     });
   }
-  L.push("", `Ante cualquier inquietud o signo de alarma, comuníquese al ${MEDICO.celular}.`);
   return L.join("\n");
 }
 
