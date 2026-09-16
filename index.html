@@ -2119,7 +2119,7 @@ function construirResumen(datos) {
     L.push("", "*Diagnóstico:*");
     datos.diagnosticos.forEach((d) => L.push(`• ${d.codigo ? d.codigo + " - " : ""}${d.descripcion}`));
   }
-  if (sec.plan && datos.plan) L.push("", "*Plan a seguir:*", datos.plan);
+  if (sec.plan && datos.plan) L.push("", "*Tratamiento:*", datos.plan);
   const meds = datos.medicamentos.filter((m) => m.nombre);
   if (sec.meds && meds.length) {
     L.push("", "*Medicamentos:*");
