@@ -601,8 +601,6 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--p
 .actionbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(255,255,255,.97); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid var(--border); padding: 10px 12px calc(10px + var(--safe-b)); }
 .actionbar-inner { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .actionbar .btn { min-height: 54px; font-size: 15px; }
-body.escribiendo .actionbar { display: none; }
-body.escribiendo .toast { bottom: 16px; }
 
 .toast { position: fixed; left: 50%; bottom: calc(92px + var(--safe-b)); transform: translateX(-50%) translateY(20px); background: #1c2624; color: #fff; padding: 12px 16px; border-radius: 10px; font-size: 14px; text-align: center; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 70; width: max-content; max-width: calc(100% - 32px); }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -725,31 +723,26 @@ details.consulta[open] summary .chev { transform: rotate(180deg); }
       <div class="hint" id="hintPaciente" hidden>Escriba para buscar pacientes anteriores.</div>
     </div>
 
-    <div class="row">
-      <div class="field">
-        <label for="telefono">WhatsApp del paciente</label>
-        <div class="phone-wrap">
-          <span class="phone-prefix">+57</span>
-          <input type="tel" id="telefono" inputmode="tel" autocomplete="off" enterkeyhint="next" placeholder="300 123 4567">
-        </div>
-      </div>
-      <div class="field">
-        <label for="fecha">Fecha</label>
-        <input type="date" id="fecha">
-      </div>
+    <div class="field">
+      <label for="fecha">Fecha</label>
+      <input type="date" id="fecha" autocomplete="off">
     </div>
 
     <div class="field">
       <label for="motivo">Motivo de consulta</label>
-      <textarea id="motivo" rows="2" autocapitalize="sentences" placeholder="Síntoma principal y tiempo de evolución"></textarea>
+      <textarea id="motivo" rows="2" autocomplete="off" autocapitalize="sentences" placeholder="Síntoma principal y tiempo de evolución"></textarea>
+    </div>
+    <div class="field">
+      <label for="antecedentes">Antecedentes</label>
+      <textarea id="antecedentes" rows="2" autocomplete="off" autocapitalize="sentences" placeholder="Personales, familiares, quirúrgicos, alergias, medicamentos que toma"></textarea>
     </div>
     <div class="field">
       <label for="evolucion">Evolución</label>
-      <textarea id="evolucion" rows="3" autocapitalize="sentences" placeholder="Enfermedad actual, antecedentes, hallazgos referidos"></textarea>
+      <textarea id="evolucion" rows="3" autocomplete="off" autocapitalize="sentences" placeholder="Enfermedad actual, hallazgos referidos por el paciente"></textarea>
     </div>
     <div class="field" style="margin-bottom:0">
       <label for="plan">Plan a seguir</label>
-      <textarea id="plan" rows="3" autocapitalize="sentences" placeholder="Recomendaciones, exámenes, controles, signos de alarma"></textarea>
+      <textarea id="plan" rows="3" autocomplete="off" autocapitalize="sentences" placeholder="Recomendaciones, exámenes, controles, signos de alarma"></textarea>
     </div>
   </div>
 
@@ -786,6 +779,7 @@ details.consulta[open] summary .chev { transform: rotate(180deg); }
     <h2><span class="step">4</span> Mensaje para WhatsApp</h2>
     <div class="options" id="waOptions">
       <label class="check"><input type="checkbox" data-sec="motivo" checked> Motivo</label>
+      <label class="check"><input type="checkbox" data-sec="antecedentes"> Antecedentes</label>
       <label class="check"><input type="checkbox" data-sec="evolucion"> Evolución</label>
       <label class="check"><input type="checkbox" data-sec="dx" checked> Diagnóstico</label>
       <label class="check"><input type="checkbox" data-sec="plan" checked> Plan</label>
@@ -904,6 +898,13 @@ details.consulta[open] summary .chev { transform: rotate(180deg); }
     <p class="sheet-sub" id="sheetSub"></p>
 
     <div class="auto-box" id="autoBlock" hidden>
+      <div class="field">
+        <label for="shTelefono">WhatsApp del paciente (solo para el envío automático)</label>
+        <div class="phone-wrap">
+          <span class="phone-prefix">+57</span>
+          <input type="tel" id="shTelefono" inputmode="tel" autocomplete="off" placeholder="300 123 4567">
+        </div>
+      </div>
       <button type="button" class="btn btn-wa btn-block" id="shAuto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
         <span>Enviar automáticamente al paciente</span>
@@ -933,7 +934,7 @@ details.consulta[open] summary .chev { transform: rotate(180deg); }
 /* =========================================================
    A. CONFIGURACIÓN
    ========================================================= */
-const APP_VERSION = "3.0";
+const APP_VERSION = "3.1";
 const MEDICO = { nombre: "Héctor Patarroyo", celular: "322 530 8278" };
 const WA_BUSINESS_ANDROID = "com.whatsapp.w4b";
 
@@ -1235,6 +1236,7 @@ function dobleToque(btn, textoConfirmar, accion) {
 const state = {
   diagnosticos: [],
   consultaId: null,   // consulta guardada que se está editando (null = nueva)
+  telefono: "",       // teléfono conocido del paciente (del historial); ya no se escribe en el formulario
   pacientes: [],      // caché para autocompletar
   medsFrecuentes: []  // caché para autocompletar
 };
@@ -1506,7 +1508,7 @@ function agregarMedicamento(datos = {}) {
       </div>
       <div class="field full">
         <label>Indicaciones</label>
-        <textarea data-k="indicaciones" rows="2" autocapitalize="sentences" placeholder="Ej: Cada 8 horas por 5 días, después de las comidas"></textarea>
+        <textarea data-k="indicaciones" rows="2" autocomplete="off" autocapitalize="sentences" placeholder="Ej: Cada 8 horas por 5 días, después de las comidas"></textarea>
       </div>
     </div>`;
   ["nombre", "dosis", "indicaciones"].forEach((k) => { if (datos[k]) div.querySelector(`[data-k="${k}"]`).value = datos[k]; });
@@ -1590,7 +1592,7 @@ function iniciarBuscadorPaciente() {
     pintar: (p, q) => `<span class="sug"><b>${resaltar(p.nombre, q)}</b><small>${escapeHTML([p.telefono, p.ultimaFecha ? "Última consulta " + fechaCorta(p.ultimaFecha) : ""].filter(Boolean).join(" · "))}</small></span>`,
     elegir: (p) => {
       input.value = p.nombre;
-      if (p.telefono) $("#telefono").value = p.telefono;
+      state.telefono = p.telefono || "";
       alCambiar();
       toast(`Paciente cargado: ${p.nombre}`, "ok", 1800);
       if (esTactil()) input.blur();
@@ -1605,8 +1607,9 @@ function leerFormulario() {
   return {
     fecha: $("#fecha").value || hoyISO(),
     paciente: $("#paciente").value.trim(),
-    telefono: $("#telefono").value.trim(),
+    telefono: state.telefono || "",
     motivo: $("#motivo").value.trim(),
+    antecedentes: $("#antecedentes").value.trim(),
     evolucion: $("#evolucion").value.trim(),
     plan: $("#plan").value.trim(),
     diagnosticos: [...state.diagnosticos],
@@ -1618,7 +1621,8 @@ function leerFormulario() {
 
 function llenarFormulario(d, consultaId = null) {
   $("#paciente").value = d.paciente || "";
-  $("#telefono").value = d.telefono || "";
+  state.telefono = d.telefono || "";
+  $("#antecedentes").value = d.antecedentes || "";
   $("#fecha").value = d.fecha || hoyISO();
   $("#motivo").value = d.motivo || "";
   $("#evolucion").value = d.evolucion || "";
@@ -1644,27 +1648,31 @@ function marcarInvalido(el) {
 }
 
 /* =========================================================
-   L. BORRADOR AUTOMÁTICO (sobrevive a recargas al volver de WhatsApp)
+   L. BORRADOR TEMPORAL
+   Solo protege la consulta si el navegador recarga la página mientras está abierta
+   (por ejemplo al volver de WhatsApp). Al cerrar y abrir la app, el formulario empieza vacío.
    ========================================================= */
-const CLAVE_BORRADOR = "consulta_telemedicina_borrador_v3";
+const CLAVE_BORRADOR = "consulta_telemedicina_borrador_sesion";
 
 function guardarBorrador() {
   try {
     const d = leerFormulario();
     d.medicamentos = obtenerMedicamentos(true);
-    localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ datos: d, consultaId: state.consultaId, wa: seccionesWA() }));
+    sessionStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ datos: d, consultaId: state.consultaId, wa: seccionesWA() }));
   } catch (e) { /* almacenamiento no disponible */ }
 }
 function cargarBorrador() {
   try {
-    const b = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) || "null");
+    const b = JSON.parse(sessionStorage.getItem(CLAVE_BORRADOR) || "null");
     if (!b || !b.datos) return false;
     $$("#waOptions input[type=checkbox]").forEach((c) => { if (b.wa && c.dataset.sec in b.wa) c.checked = !!b.wa[c.dataset.sec]; });
     llenarFormulario(b.datos, b.consultaId || null);
     return true;
   } catch (e) { return false; }
 }
-function borrarBorrador() { try { localStorage.removeItem(CLAVE_BORRADOR); } catch (e) { /* nada */ } }
+function borrarBorrador() { try { sessionStorage.removeItem(CLAVE_BORRADOR); } catch (e) { /* nada */ } }
+// Borra el borrador permanente que guardaban las versiones anteriores
+try { localStorage.removeItem("consulta_telemedicina_borrador_v3"); localStorage.removeItem("consulta_telemedicina_borrador_v2"); } catch (e) { /* nada */ }
 
 let _tGuardar;
 function alCambiar() {
@@ -1708,7 +1716,7 @@ async function guardarEnHistorial(datos) {
     if (!consulta) consulta = { id: nuevoId(), creado: ahora, envios: [], medsContados: [] };
     Object.assign(consulta, {
       pacienteId: paciente.id,
-      fecha: datos.fecha, motivo: datos.motivo, evolucion: datos.evolucion, plan: datos.plan,
+      fecha: datos.fecha, motivo: datos.motivo, antecedentes: datos.antecedentes, evolucion: datos.evolucion, plan: datos.plan,
       diagnosticos: datos.diagnosticos, medicamentos: datos.medicamentos,
       optDx: datos.optDx, optPlan: datos.optPlan, actualizado: ahora
     });
@@ -1911,6 +1919,7 @@ function abrirHoja() {
   $("#autoBlock").hidden = !auto;
   $("#shShare").className = "btn btn-block " + (auto ? "btn-ghost" : "btn-wa");
   $("#shAutoResumen").checked = cfg.resumen !== false;
+  if (auto) $("#shTelefono").value = ultimaReceta.datos.telefono || "";
   $("#autoEstado").hidden = true;
   $("#shAuto").disabled = !navigator.onLine;
   $("#shAuto span").textContent = navigator.onLine ? "Enviar automáticamente al paciente" : "Sin conexión a internet";
@@ -2009,8 +2018,9 @@ function pintarEstados(vista) {
 async function envioAutomatico() {
   const r = ultimaReceta;
   if (!r) return;
-  const numero = normalizarTelefono(r.datos.telefono);
-  if (!numero) { toast("Falta un teléfono válido del paciente", "error"); return; }
+  const campoTel = $("#shTelefono");
+  const numero = normalizarTelefono(campoTel.value);
+  if (!numero) { marcarInvalido(campoTel); toast("Escriba el WhatsApp del paciente (10 dígitos)", "error"); return; }
   if (!navigator.onLine) { toast("Sin conexión a internet", "error"); return; }
 
   const incluirResumen = $("#shAutoResumen").checked;
@@ -2043,6 +2053,7 @@ async function envioAutomatico() {
     if (data.resumen) vista.resumen = data.resumen.ok ? { status: "aceptado", id: data.resumen.id } : { status: "error", error: data.resumen.error };
     pintarEstados(vista);
     toast("Receta enviada al paciente", "ok");
+    recordarTelefono(r, campoTel.value.trim());
     envioId = await registrarEnvio(r.consultaId, { tipo: "automatico", receta: vista.receta, resumen: vista.resumen });
     if (data.seguimiento) await seguirEstados(vista, r.consultaId, envioId);
   } catch (err) {
@@ -2053,6 +2064,17 @@ async function envioAutomatico() {
     btn.disabled = false;
     $("#shAuto span").textContent = "Enviar de nuevo";
   }
+}
+
+/** Guarda el teléfono usado en el envío automático para prellenarlo la próxima vez */
+async function recordarTelefono(receta, telefono) {
+  receta.datos.telefono = telefono;
+  if (state.consultaId && state.consultaId === receta.consultaId) state.telefono = telefono;
+  try {
+    const c = receta.consultaId && await DB.obtener("consultas", receta.consultaId);
+    const p = c && await DB.obtener("pacientes", c.pacienteId);
+    if (p && p.telefono !== telefono) { p.telefono = telefono; await DB.guardar("pacientes", p); recargarCaches(); }
+  } catch (e) { /* nada */ }
 }
 
 /** Consulta al servidor los estados que Meta reporta por webhook (entregado, leído, fallido) */
@@ -2085,12 +2107,13 @@ function seccionesWA() {
 function construirResumen(datos) {
   const sec = seccionesWA();
   const L = [];
-  L.push("*Resumen de consulta - Telemedicina*");
+  L.push("*Resumen de consulta*");
   L.push(`Dr. ${MEDICO.nombre} · Medicina Biológica y Acupuntura`);
   L.push(`Fecha: ${fechaCorta(datos.fecha)}`);
   L.push("");
   L.push(`*Paciente:* ${datos.paciente || "—"}`);
   if (sec.motivo && datos.motivo)       L.push("", "*Motivo de consulta:*", datos.motivo);
+  if (sec.antecedentes && datos.antecedentes) L.push("", "*Antecedentes:*", datos.antecedentes);
   if (sec.evolucion && datos.evolucion) L.push("", "*Evolución:*", datos.evolucion);
   if (sec.dx && datos.diagnosticos.length) {
     L.push("", "*Diagnóstico:*");
@@ -2141,14 +2164,12 @@ function abrirWhatsAppBusiness(numero, texto) {
 async function enviarWhatsApp() {
   const datos = leerFormulario();
   if (!datos.paciente) { marcarInvalido($("#paciente")); toast("Ingrese el nombre del paciente", "error"); return; }
-  const numero = normalizarTelefono(datos.telefono);
-  if (numero === null) { marcarInvalido($("#telefono")); toast("Teléfono inválido: 10 dígitos (ej. 300 123 4567)", "error"); return; }
   guardarBorrador();
-  if (!numero) toast("Sin teléfono: elija el contacto en WhatsApp Business");
   const texto = construirResumen(datos);
   // Guardar en historial sin bloquear la apertura de WhatsApp
   guardarEnHistorial(datos).then((id) => registrarEnvio(id, { tipo: "whatsapp" }));
-  abrirWhatsAppBusiness(numero, texto);
+  toast("Elija el chat del paciente en WhatsApp Business", "ok", 2500);
+  abrirWhatsAppBusiness("", texto);
 }
 
 async function copiarResumen() {
@@ -2236,6 +2257,7 @@ async function abrirDetallePaciente(pacId) {
         </summary>
         <div class="consulta-body">
           ${c.motivo ? `<h4>Motivo</h4><p>${escapeHTML(c.motivo)}</p>` : ""}
+          ${c.antecedentes ? `<h4>Antecedentes</h4><p>${escapeHTML(c.antecedentes)}</p>` : ""}
           ${c.evolucion ? `<h4>Evolución</h4><p>${escapeHTML(c.evolucion)}</p>` : ""}
           ${(c.diagnosticos || []).length ? `<h4>Diagnóstico</h4><p>${c.diagnosticos.map((d) => escapeHTML((d.codigo ? d.codigo + " - " : "") + d.descripcion)).join("\n")}</p>` : ""}
           ${meds.length ? `<h4>Medicamentos</h4><ol>${meds.map((m) => `<li><b>${escapeHTML(m.nombre)}</b>${m.dosis ? " — " + escapeHTML(m.dosis) : ""}${m.indicaciones ? `<br><i>${escapeHTML(m.indicaciones)}</i>` : ""}</li>`).join("")}</ol>` : ""}
@@ -2267,14 +2289,17 @@ async function accionDetalle(btn) {
   const c = conId ? await DB.obtener("consultas", conId) : null;
   const datosDe = (con, fecha) => ({
     paciente: p.nombre, telefono: p.telefono, fecha: fecha || con.fecha,
-    motivo: con.motivo, evolucion: con.evolucion, plan: con.plan,
+    motivo: con.motivo, antecedentes: con.antecedentes, evolucion: con.evolucion, plan: con.plan,
     diagnosticos: con.diagnosticos || [], medicamentos: (con.medicamentos || []).filter((m) => m.nombre || m.dosis || m.indicaciones),
     optDx: con.optDx !== false, optPlan: !!con.optPlan
   });
 
   if (accion === "nueva") {
     cerrarTodasLasCapas();
-    llenarFormulario({ paciente: p.nombre, telefono: p.telefono, fecha: hoyISO() }, null);
+    // Los antecedentes se copian de la última consulta que los tenga
+    const previas = (await DB.porIndice("consultas", "pacienteId", pacId)).sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    const conAntecedentes = previas.find((x) => x.antecedentes);
+    llenarFormulario({ paciente: p.nombre, telefono: p.telefono, fecha: hoyISO(), antecedentes: conAntecedentes ? conAntecedentes.antecedentes : "" }, null);
     window.scrollTo({ top: 0 });
     toast(`Nueva consulta para ${p.nombre}`, "ok");
   } else if (accion === "repetir" && c) {
@@ -2498,7 +2523,7 @@ function reiniciar() {
   llenarFormulario({ fecha: hoyISO() }, null);
   borrarBorrador();
   window.scrollTo({ top: 0, behavior: "smooth" });
-  toast("Listo para una nueva consulta (la anterior quedó en el historial si generó receta o la envió)", "ok", 4000);
+  toast("Listo para una nueva consulta", "ok");
 }
 
 /* =========================================================
@@ -2512,7 +2537,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderChips();
   $$("textarea").forEach(autoCrecer);
 
-  ["#paciente", "#telefono", "#motivo", "#evolucion", "#plan", "#fecha"].forEach((s) =>
+  ["#paciente", "#motivo", "#antecedentes", "#evolucion", "#plan", "#fecha"].forEach((s) =>
     $(s).addEventListener("input", (e) => { if (e.target.matches("textarea")) autoCrecer(e.target); alCambiar(); }));
   ["#waOptions", "#optDx", "#optPlan"].forEach((s) => $(s).addEventListener("change", alCambiar));
 
@@ -2549,10 +2574,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pila.length) cerrarCapaSuperior(); });
 
-  // Ocultar la barra inferior mientras el teclado está abierto (pantallas táctiles)
-  const esCampo = (el) => el && el.matches && el.matches('input:not([type=checkbox]):not([type=date]):not([type=file]), textarea');
-  document.addEventListener("focusin", (e) => { if (esTactil() && esCampo(e.target)) document.body.classList.add("escribiendo"); });
-  document.addEventListener("focusout", () => setTimeout(() => { if (!esCampo(document.activeElement)) document.body.classList.remove("escribiendo"); }, 120));
+  // Si se escribe otro nombre a mano, se olvida el teléfono del paciente anterior
+  $("#paciente").addEventListener("input", () => { state.telefono = ""; });
 
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") guardarBorrador(); });
 
