@@ -716,6 +716,11 @@ details.consulta[open] summary .chev { transform: rotate(180deg); }
     <h2><span class="step">1</span> Paciente e informe <span class="edit-tag" id="tagEditando" hidden>Editando consulta guardada</span></h2>
 
     <div class="field">
+      <label for="expediente">Expediente</label>
+      <input type="text" id="expediente" autocomplete="off" enterkeyhint="next" placeholder="Número de expediente">
+    </div>
+
+    <div class="field">
       <label for="paciente">Nombre del paciente <span class="req">*</span></label>
       <div class="combo">
         <input type="text" id="paciente" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Nombres y apellidos" role="combobox" aria-expanded="false" aria-autocomplete="list">
@@ -1593,6 +1598,7 @@ function iniciarBuscadorPaciente() {
     elegir: (p) => {
       input.value = p.nombre;
       state.telefono = p.telefono || "";
+      $("#expediente").value = p.expediente || "";
       alCambiar();
       toast(`Paciente cargado: ${p.nombre}`, "ok", 1800);
       if (esTactil()) input.blur();
@@ -1606,6 +1612,7 @@ function iniciarBuscadorPaciente() {
 function leerFormulario() {
   return {
     fecha: $("#fecha").value || hoyISO(),
+    expediente: $("#expediente").value.trim(),
     paciente: $("#paciente").value.trim(),
     telefono: state.telefono || "",
     motivo: $("#motivo").value.trim(),
@@ -1620,6 +1627,7 @@ function leerFormulario() {
 }
 
 function llenarFormulario(d, consultaId = null) {
+  $("#expediente").value = d.expediente || "";
   $("#paciente").value = d.paciente || "";
   state.telefono = d.telefono || "";
   $("#antecedentes").value = d.antecedentes || "";
@@ -1708,6 +1716,7 @@ async function guardarEnHistorial(datos) {
     Object.assign(paciente, {
       nombre: datos.paciente, nNombre,
       telefono: datos.telefono || paciente.telefono || "",
+      expediente: datos.expediente || paciente.expediente || "",
       actualizado: ahora,
       ultimaFecha: !paciente.ultimaFecha || datos.fecha > paciente.ultimaFecha ? datos.fecha : paciente.ultimaFecha
     });
@@ -2236,7 +2245,7 @@ async function abrirDetallePaciente(pacId) {
   cont.innerHTML = `
     <div class="pac-head">
       <h3>${escapeHTML(p.nombre)}</h3>
-      <p>${escapeHTML(p.telefono || "Sin teléfono")} · ${consultas.length} ${consultas.length === 1 ? "consulta" : "consultas"}</p>
+      <p>${p.expediente ? "Expediente " + escapeHTML(p.expediente) + " · " : ""}${escapeHTML(p.telefono || "Sin teléfono")} · ${consultas.length} ${consultas.length === 1 ? "consulta" : "consultas"}</p>
       <div class="btn-group">
         <button type="button" class="btn btn-primary" data-accion="nueva">Nueva consulta</button>
         <button type="button" class="btn btn-danger" data-accion="borrar-pac">Eliminar paciente</button>
@@ -2288,7 +2297,7 @@ async function accionDetalle(btn) {
   const conId = btn.closest("[data-con]")?.dataset.con;
   const c = conId ? await DB.obtener("consultas", conId) : null;
   const datosDe = (con, fecha) => ({
-    paciente: p.nombre, telefono: p.telefono, fecha: fecha || con.fecha,
+    paciente: p.nombre, telefono: p.telefono, expediente: p.expediente || "", fecha: fecha || con.fecha,
     motivo: con.motivo, antecedentes: con.antecedentes, evolucion: con.evolucion, plan: con.plan,
     diagnosticos: con.diagnosticos || [], medicamentos: (con.medicamentos || []).filter((m) => m.nombre || m.dosis || m.indicaciones),
     optDx: con.optDx !== false, optPlan: !!con.optPlan
@@ -2299,7 +2308,7 @@ async function accionDetalle(btn) {
     // Los antecedentes se copian de la última consulta que los tenga
     const previas = (await DB.porIndice("consultas", "pacienteId", pacId)).sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
     const conAntecedentes = previas.find((x) => x.antecedentes);
-    llenarFormulario({ paciente: p.nombre, telefono: p.telefono, fecha: hoyISO(), antecedentes: conAntecedentes ? conAntecedentes.antecedentes : "" }, null);
+    llenarFormulario({ paciente: p.nombre, telefono: p.telefono, expediente: p.expediente || "", fecha: hoyISO(), antecedentes: conAntecedentes ? conAntecedentes.antecedentes : "" }, null);
     window.scrollTo({ top: 0 });
     toast(`Nueva consulta para ${p.nombre}`, "ok");
   } else if (accion === "repetir" && c) {
